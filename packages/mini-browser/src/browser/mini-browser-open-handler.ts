@@ -53,7 +53,12 @@ export namespace MiniBrowserCommands {
  * Further options for opening a new `Mini Browser` widget.
  */
 export interface MiniBrowserOpenerOptions extends WidgetOpenerOptions, MiniBrowserProps {
-
+    /**
+     * Controls how the mini-browser widget should be opened.
+     * - `source`: editable source.
+     * - `preview`: rendered content of the source.
+     */
+    openFor?: 'source' | 'preview';
 }
 
 @injectable()
@@ -99,14 +104,19 @@ export class MiniBrowserOpenHandler extends NavigatableWidgetOpenHandler<MiniBro
         });
     }
 
-    canHandle(uri: URI): number {
+    canHandle(uri: URI, options?: MiniBrowserOpenerOptions): number {
         // It does not guard against directories. For instance, a folder with this name: `Hahahah.html`.
         // We could check with the FS, but then, this method would become async again.
         const extension = uri.toString().split('.').pop();
-        if (extension) {
-            return this.supportedExtensions.get(extension.toLocaleLowerCase()) || 0;
+        if (!extension) {
+            return 0;
         }
-        return 0;
+        if (options?.openFor === 'source') {
+            return -100;
+        } else {
+            const score = this.supportedExtensions.get(extension.toLocaleLowerCase());
+            return score ? score + 100 : 0;
+        }
     }
 
     async open(uri: URI, options?: MiniBrowserOpenerOptions): Promise<MiniBrowser> {
@@ -240,7 +250,8 @@ export class MiniBrowserOpenHandler extends NavigatableWidgetOpenHandler<MiniBro
         }
         await this.open(uri, {
             mode: 'reveal',
-            widgetOptions: { ref, mode: 'open-to-right' }
+            widgetOptions: { ref, mode: 'open-to-right' },
+            openFor: 'preview'
         });
     }
 
@@ -248,7 +259,8 @@ export class MiniBrowserOpenHandler extends NavigatableWidgetOpenHandler<MiniBro
         const uri = this.getSourceUri(ref);
         if (uri) {
             await open(this.openerService, uri, {
-                widgetOptions: { ref, mode: 'open-to-left' }
+                widgetOptions: { ref, mode: 'open-to-left' },
+                openFor: 'source'
             });
         }
     }
@@ -286,7 +298,8 @@ export class MiniBrowserOpenHandler extends NavigatableWidgetOpenHandler<MiniBro
                 area: 'right'
             },
             resetBackground,
-            iconClass: 'theia-mini-browser-icon'
+            iconClass: 'theia-mini-browser-icon',
+            openFor: 'preview'
         };
     }
 
